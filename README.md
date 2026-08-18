@@ -1,16 +1,19 @@
 # AI-Driven Game Economy Optimizer & Bot Predictor
 
-Backend analytics for multiplayer game economies: transaction monitoring, inflation detection, and bot-risk scoring for simulated player markets.
+I built this over a few weekends after arguing with an old MMO guild about who was farming gold with bots and why prices kept spiking out of nowhere. It's a backend that simulates a small in-game economy and then tries to flag the accounts that look like bots, plus catch inflation before it wrecks the market.
 
-## What It Does
+It's not hooked up to a real game - everything is simulated (random players, trades, farming behavior) so I could test the analytics without needing an actual live economy to pull data from.
 
-- Simulates MMO-style players, resource generation, marketplace trades, and suspicious gold-farming behavior.
-- Stores economic events in a relational database through SQLAlchemy.
-- Exposes a FastAPI service for health metrics, bot predictions, market alerts, and data seeding.
-- Uses Pandas and Scikit-learn anomaly detection to flag likely bots and economy instability.
-- Provides a Streamlit live-ops dashboard for economy health, inflation, wealth concentration, and suspicious accounts.
+## What's actually in here
 
-## Quick Start
+- A FastAPI backend that stores everything in a database (SQLite by default so you don't have to set up Postgres just to try it, but Postgres works fine too if you swap the connection string)
+- A simulator that generates fake players - casuals, traders, whales, and a chunk of "bot farm" accounts that behave differently on purpose
+- Anomaly detection with scikit-learn (Isolation Forest) plus a few manual rule-based flags I added because the model alone missed some obvious cases
+- A Streamlit dashboard so I could actually look at charts instead of staring at JSON responses all day
+
+## Running it locally
+
+I used PowerShell for all of this since I'm on Windows - adjust if you're on something else:
 
 ```powershell
 python -m venv .venv
@@ -20,17 +23,17 @@ python scripts\seed_demo.py --players 500 --days 21
 uvicorn app.main:app --reload
 ```
 
-In a second terminal:
+Then in a second terminal:
 
 ```powershell
 streamlit run dashboard\streamlit_app.py
 ```
 
-FastAPI docs: http://127.0.0.1:8000/docs
+API docs show up at http://127.0.0.1:8000/docs once it's running.
 
-## PostgreSQL
+## Using Postgres instead of SQLite
 
-The app defaults to `sqlite:///./game_economy.db` for local demos. To use PostgreSQL:
+By default it just writes to a local `game_economy.db` file so there's nothing to configure. If you want Postgres instead:
 
 ```powershell
 $env:DATABASE_URL="postgresql+psycopg://game_ops:password@localhost:5432/game_economy"
@@ -38,25 +41,34 @@ python scripts\seed_demo.py
 uvicorn app.main:app --reload
 ```
 
-## Key Endpoints
+## Endpoints
 
-- `GET /health` - service and database status
-- `POST /seed` - generate a fresh simulated economy
-- `GET /metrics/economy` - aggregate money supply, inflation, velocity, concentration
-- `GET /metrics/resources` - faucet and sink balance by resource
-- `GET /market/alerts` - hyper-inflation and volume anomalies
-- `GET /players/suspicious` - bot-risk ranking
-- `GET /players/{player_id}` - player profile and risk features
+- `GET /health` - checks the DB connection is alive
+- `POST /seed` - wipes and regenerates a fresh simulated economy
+- `GET /metrics/economy` - money supply, inflation, velocity, wealth concentration (Gini)
+- `GET /metrics/resources` - how much of each resource is being generated vs sunk
+- `GET /market/alerts` - flags weird price/volume spikes
+- `GET /players/suspicious` - ranked list of accounts most likely to be bots
+- `GET /players/{player_id}` - single player breakdown
 
-## Project Layout
+## Layout
 
 ```text
 app/
-  analytics/       anomaly detection, economy metrics, feature engineering
-  db/              SQLAlchemy session and ORM models
-  services/        simulation and orchestration
-  main.py          FastAPI app
-dashboard/         Streamlit frontend
-scripts/           demo seeding tools
-tests/             lightweight regression tests
+  analytics/       bot detection + economy math
+  db/               models and session handling
+  services/         the simulator that fakes the economy
+  main.py           FastAPI routes
+dashboard/          Streamlit charts
+scripts/             CLI seeding script
+tests/               a couple of sanity checks, not full coverage
 ```
+
+## Stuff I still want to fix
+
+- The bot detection is honestly still pretty rough - it catches obvious farming patterns but a smarter bot would probably slip through. I want to try adding time-of-day / session-length features at some point.
+- No auth on the API at all right now, it's just for local testing.
+- The dashboard could use loading states - right now it just kind of blanks out while it fetches.
+- Tests only cover the happy path.
+
+Started this mostly to see how anomaly detection actually holds up on synthetic data before trying it on something real. Feedback and issues welcome.
