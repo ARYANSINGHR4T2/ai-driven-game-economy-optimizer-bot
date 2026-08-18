@@ -71,4 +71,4 @@ tests/               a couple of sanity checks, not full coverage
 - The dashboard could use loading states - right now it just kind of blanks out while it fetches.
 - Tests only cover the happy path.
 
-Started this mostly to see how anomaly detection actually holds up on synthetic data before trying it on something real. Feedback and issues welcome.
+Started this mostly to see how anomaly detection actually holds up on synthetic data before trying it on something real. Feedback and issues welcome!
